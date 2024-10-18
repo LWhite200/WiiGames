@@ -22,18 +22,19 @@ typedef struct {
     int expNeeded;
 } Letter;
 
-// Declare the player's letters as a global variable
-extern Letter playerLetters[5];  // Example: 5 letters in the player's inventory
-extern Letter enemyLetters[5];  // Example: 5 letters in the player's inventory
-
+// Declare the userLetters variable as extern
+extern Letter userLetters[5];  // Declare userLetters as an external array
+extern Letter playerLetters[5];  // Declare other arrays as externs
+extern Letter enemyLetters[5];
 extern Letter playWord[5];
 extern Letter enemyWord[5];
 
 // Function prototypes
-void InitializeLetters();
-Letter InitializeLetter(char letterName, int level);  // Declare the function here
+Letter InitializeLetter(char letterName, int level);
+void createParty();
 
 #endif // LETTERS_H
+
 
 /*
 

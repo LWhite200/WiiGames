@@ -1,5 +1,8 @@
 #include "letters.h"
 
+// Define the userLetters array here (only once)
+Letter userLetters[5];  // Global array to store the player's gathered letters
+
 // Function to initialize a letter with stats based on its name and level
 Letter InitializeLetter(char letterName, int level) {
     Letter letter;
@@ -183,4 +186,17 @@ Letter InitializeLetter(char letterName, int level) {
     letter.expNeeded = 100 + level * 20;
 
     return letter;
+}
+
+void createParty() {
+    // Initialize the first letter as 'A' with level 1
+    userLetters[0] = InitializeLetter('A', 1);
+    userLetters[1] = InitializeLetter('E', 1);
+    userLetters[2] = InitializeLetter('I', 1);
+    userLetters[3] = InitializeLetter('0', 1);
+    
+    // Initialize the rest of the array with empty letters (name as '\0')
+   // for (int i = 1; i < 5; i++) {
+     //   userLetters[i].name = '\0';  // Empty slot
+    //}
 }

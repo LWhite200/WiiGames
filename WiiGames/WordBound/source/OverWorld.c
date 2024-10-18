@@ -9,6 +9,9 @@
 #include "overWorld.h"
 #include <stdbool.h>
 
+// letters.c
+#include "letters.h"
+
 // expand blocks
 // trees, enemies, bosses
 
@@ -33,7 +36,7 @@ const u32 col[10] = { 0xFFFFFFFF,0x00000080,0xC0C0C0FF,0x008000FF,0xFF0000FF,0x0
 #define PLAYER_SPEED 1.75f // 0.2f
 #define ENEMY_SPEED 0.725f
 
-
+bool paused = false;
 float camY = 3.0f;
 float camX = 8.0f;
 float camZ = 0.0f;
@@ -351,10 +354,6 @@ void movePlayer() {
         }
     }
 
-    //if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_A) camY++;
-    //if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_B) camY--;
-    if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_PLUS) camX += 1.0f;
-    if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_MINUS) camX -= 1.0f;
     if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_1) camY += 1.0f;
     if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_2) camY -= 1.0f;
 
@@ -374,40 +373,56 @@ void drawPlayer() {
 
 void resetOverWorld() {
     enemyPlayerCollision = false;
-    //hasFort = 0;
-    //numEnemies = 0;
-    //camY = 3.0f;
-    //camX = 8.0f;
-    //camZ = 0.0f;
-    //player.x = 0;
-    //player.y = 1;
-    //player.z = 0;
-    //player.vx = 0;
-    //player.vy = 0;
-    //player.vz = 0;
-
 }
 
-void runOverWorld() {
+void displayParty(GRRLIB_ttfFont* myFont) {
+    // Display the player's gathered letters
+        char gatheredLetters[6];  // Store the gathered letters as a string
+        for (int i = 0; i < 5; i++) {
+            if (userLetters[i].name != '\0') {  // Check if a letter exists
+                gatheredLetters[i] = userLetters[i].name;
+            } else {
+                gatheredLetters[i] = ' ';  // Add a space for unused slots
+            }
+        }
+        gatheredLetters[5] = '\0';  // Null-terminate the string
+
+        // Display the gathered letters on the screen
+        GRRLIB_PrintfTTF(170, 0, myFont, gatheredLetters, 32, 0xFFFFFFFF);
+}
+
+void runOverWorld(GRRLIB_ttfFont* myFont) {
     fillWorldDistance();
     GRRLIB_SetBackgroundColour(0x00, 0xCC, 0xFF, 0xFF);  // 0x00CCFFFF
 
     while (!enemyPlayerCollision) {
         WPAD_ScanPads();
-        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)  break;
+        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) break;
+        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_PLUS) paused = !paused;
 
-        movePlayer();
-        updateEnemies();
+        if(!paused) {
+            movePlayer();
+            updateEnemies();
+        }
 
         GRRLIB_Camera3dSettings(player.x - camX, camY, player.z - camZ, 0, 1, 0, player.x, player.y + 0.635, player.z);
         GRRLIB_3dMode(0.1, 1000, 45, 0, 1);
-
         displayWorldGrid();
         drawPlayer();
         drawEnemies();
 
+        GRRLIB_2dMode();
+        displayParty(myFont);
+
+        if(paused) {
+            GRRLIB_Rectangle(0, 0, 640, 480, 0x000000DD, 1);
+            GRRLIB_PrintfTTF(170, 204, myFont, "The Game Paused", 32, 0xFF0000FF);
+        }
+
+        
+
+        
+
         GRRLIB_Render();
     }
-    
-    
 }

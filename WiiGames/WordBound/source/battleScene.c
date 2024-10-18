@@ -120,13 +120,22 @@ void chooseMove() {
 
 
 void setCurrentLetters() {
+    int i;
     // Initialize each letter with the desired level
-    playerLetters[0] = InitializeLetter('A', 5);
-   playerLetters[1] = InitializeLetter('E', 3);
-   playerLetters[2] = InitializeLetter('I', 4);
-    playerLetters[3] = InitializeLetter('M', 5);
-    playerLetters[4] = InitializeLetter('Q', 5);
+    for (i = 0; i < sizeof(userLetters) / sizeof(userLetters[0]); i++) {
+        // Stop copying if a letter's name is empty (i.e., '\0')
+        if (userLetters[i].name == '\0') {
+            break;
+        }
+        playerLetters[i] = userLetters[i];
+    }
+    // Optionally, terminate the playerLetters array
+    if (i < sizeof(playerLetters) / sizeof(playerLetters[0])) {
+        playerLetters[i].name = '\0';  // Set the terminating letter as empty
+    }
 }
+
+
 
 void restoreAllHealth() {
     // Restore health for player letters

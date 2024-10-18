@@ -2,22 +2,27 @@
 #include <wiiuse/wpad.h>
 #include "overWorld.h"
 #include "battleScene.h"
+#include "loadScreen.h"
 #include <stdbool.h>
 
 // Font
 #include "FreeMonoBold_ttf.h"
 #include "Untitled_png.h"
+#include "letters.h"
 
 int main() {
     GRRLIB_Init();
     WPAD_Init();
 
     bool battleScene = false;
+    bool loadScreen = true;
 
     GRRLIB_texImg* tex_Untitled = GRRLIB_LoadTexture(Untitled_png);
     GRRLIB_ttfFont* myFont = GRRLIB_LoadTTF(FreeMonoBold_ttf, FreeMonoBold_ttf_size);
     
     GRRLIB_Settings.antialias = true;
+
+    createParty();
 
     GRRLIB_SetBackgroundColour(0x00, 0xCC, 0xFF, 0xFF);  // 0x00CCFFFF
 
@@ -29,9 +34,14 @@ int main() {
             break;  // Exit game
         }
 
+        if(loadScreen) {
+            runLoadScreen(myFont);
+            loadScreen = false;
+        }
+
         if (!battleScene) {
             resetOverWorld();
-            runOverWorld();  // Switch to OverWorld scene
+            runOverWorld(myFont);  // Switch to OverWorld scene
             battleScene = true;
         }
         else {
