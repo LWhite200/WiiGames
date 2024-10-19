@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdio.h>
+#include <string.h>
 #include "overWorld.h"
 #include <stdbool.h>
 
@@ -33,7 +35,7 @@ const u32 col[10] = { 0xFFFFFFFF,0x00000080,0xC0C0C0FF,0x008000FF,0xFF0000FF,0x0
 #define numBlocks 4
 
 #define TILE_SIZE 1.0f
-#define PLAYER_SPEED 1.75f // 0.2f
+#define PLAYER_SPEED 1.20f // 0.2f
 #define ENEMY_SPEED 0.725f
 
 bool paused = false;
@@ -59,14 +61,22 @@ int numEnemies = 0;
 Enemy enemies[MAX_ENEMIES]; // array of enemys
 
 
-// even are friendly forts, odd are enemy
-// Defining the Fort structure with proper syntax
+
+
+char pauseText[] = "The Game Paused";
+
 typedef struct {
-     // size and color
-    int fort1[5];
-    int fort2[10]; // 3 forts, each 5x5
-    int fort3[15];
-} Fort;
+    float x, z;
+    bool hasLetter;
+    char dialog[];
+} FRIEND;
+
+FRIEND friend = { 10, 0, false, "Oh my god this works"}; 
+
+
+
+
+
 
 typedef struct {
     float x, y, z;
@@ -77,10 +87,10 @@ Player player = { 0, 1, 0, 0, 0, 0 }; // Initialize player
 
 void drawFort(int i) {
     int centerX = worldDistance[i];
-    int size = fortType[i];
+    int size = fortType[i] + 19;
 
     GRRLIB_ObjectViewBegin();
-    GRRLIB_ObjectViewTrans(centerX, 1 * size, GRID_WIDTH / 2);
+    GRRLIB_ObjectViewTrans(centerX, (size / 2), GRID_WIDTH / 2);
     GRRLIB_ObjectViewEnd();
     GRRLIB_DrawCube(size, 1, col[4]);
     GRRLIB_DrawCube(size, 0, col[1]);
@@ -123,7 +133,7 @@ void displayWorldGrid() {
 
         // Apply scaling first
         float scaleX = LENGTH;   // Scale in the X direction (width)
-        float scaleY = 1.0f;     // Scale in the Y direction (height)
+        float scaleY = 0;     // Scale in the Y direction (height)
         float scaleZ = LENGTHZ;   // Scale in the Z direction (depth)
         GRRLIB_ObjectViewScale(scaleX, scaleY, scaleZ);
         GRRLIB_ObjectViewTrans(worldDistance[i], 0, 0);
@@ -253,10 +263,6 @@ void destroyEnemy(int index) {
 
     // Decrease the number of enemies
     numEnemies--;
-
-    // Optional: Perform additional cleanup or effects here, e.g. play sound or animation
-    // e.g., playExplosionSound();
-    // e.g., triggerExplosionAnimation(enemies[index].x, enemies[index].z);
 }
 
 void playerEnemyCheck() {
@@ -270,7 +276,6 @@ void playerEnemyCheck() {
         }
     }
 }
-
 
 int enemyCollision(float new_x, float new_z, int currentEnemy) {
     for (int i = 0; i < numEnemies; i++) {
@@ -371,10 +376,6 @@ void drawPlayer() {
     GRRLIB_DrawCube(TILE_SIZE + 0.01, 0, col[1]);
 }
 
-void resetOverWorld() {
-    enemyPlayerCollision = false;
-}
-
 void displayParty(GRRLIB_ttfFont* myFont) {
     // Display the player's gathered letters
         char gatheredLetters[6];  // Store the gathered letters as a string
@@ -391,18 +392,51 @@ void displayParty(GRRLIB_ttfFont* myFont) {
         GRRLIB_PrintfTTF(170, 0, myFont, gatheredLetters, 32, 0xFFFFFFFF);
 }
 
-void runOverWorld(GRRLIB_ttfFont* myFont) {
+void resetOverWorld() {
+    enemyPlayerCollision = false;
+}
+
+
+
+
+void drawFriend() {
+    GRRLIB_ObjectViewBegin();
+    GRRLIB_ObjectViewRotate(0, 0, 0);
+    GRRLIB_ObjectViewTrans(friend.x, 1, friend.z);
+    GRRLIB_ObjectViewEnd();
+    GRRLIB_DrawCube(TILE_SIZE, TILE_SIZE, col[5]);
+    GRRLIB_DrawCube(TILE_SIZE + 0.01, 0, col[1]);
+}
+
+
+
+int runOverWorld(GRRLIB_ttfFont* myFont) {
     fillWorldDistance();
     GRRLIB_SetBackgroundColour(0x00, 0xCC, 0xFF, 0xFF);  // 0x00CCFFFF
 
+    int retValue = 0;
+
     while (!enemyPlayerCollision) {
         WPAD_ScanPads();
-        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) break;
+
+        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) {
+            retValue = -1;
+            break;
+        }
+
         if (WPAD_ButtonsDown(0) & WPAD_BUTTON_PLUS) paused = !paused;
 
         if(!paused) {
             movePlayer();
             updateEnemies();
+
+            if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A) {
+                double distance = sqrt(pow(friend.x - player.x, 2) + pow(friend.z - player.z, 2));
+                if (distance < 10) {
+                    paused = true;
+                    strcpy(pauseText, friend.dialog);
+                }
+            }
         }
 
         GRRLIB_Camera3dSettings(player.x - camX, camY, player.z - camZ, 0, 1, 0, player.x, player.y + 0.635, player.z);
@@ -410,19 +444,18 @@ void runOverWorld(GRRLIB_ttfFont* myFont) {
         displayWorldGrid();
         drawPlayer();
         drawEnemies();
+        drawFriend();
 
         GRRLIB_2dMode();
         displayParty(myFont);
 
         if(paused) {
             GRRLIB_Rectangle(0, 0, 640, 480, 0x000000DD, 1);
-            GRRLIB_PrintfTTF(170, 204, myFont, "The Game Paused", 32, 0xFF0000FF);
+            GRRLIB_PrintfTTF(170, 204, myFont, pauseText, 32, 0xFF0000FF);
         }
-
-        
-
-        
 
         GRRLIB_Render();
     }
+
+    return retValue;
 }

@@ -2,6 +2,6 @@
 #define OVERWORLD_H
 
 void resetOverWorld();
-void runOverWorld();
+int runOverWorld();
 
 #endif

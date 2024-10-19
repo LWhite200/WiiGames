@@ -589,7 +589,7 @@ void newGame() {
 }
 
 
-void runBattleScene(GRRLIB_texImg* tex_Untitled, GRRLIB_ttfFont* myFont) {
+int runBattleScene(GRRLIB_texImg* tex_Untitled, GRRLIB_ttfFont* myFont) {
     GRRLIB_2dMode();
     u8 FPS = 0;
 
@@ -600,10 +600,16 @@ void runBattleScene(GRRLIB_texImg* tex_Untitled, GRRLIB_ttfFont* myFont) {
     
     GRRLIB_InitTileSet(tex_Untitled, 32, 32, 32);
 
+    int rValue = 0;
+
     // Loop forever
     while (1) {
         WPAD_ScanPads();
-        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) break;
+        
+        if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) {
+            rValue = -1;
+            break;
+        }
 
         GRRLIB_DrawImg(0, 0, tex_Untitled, 0, 1, 1, 0xFFFFFFFF);  // Background image
 
@@ -680,6 +686,7 @@ void runBattleScene(GRRLIB_texImg* tex_Untitled, GRRLIB_ttfFont* myFont) {
         GRRLIB_Render();  // Render the frame buffer to the TV
     }
 
+    return rValue;
     
 }
 

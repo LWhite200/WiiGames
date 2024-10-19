@@ -41,19 +41,21 @@ int main() {
 
         if (!battleScene) {
             resetOverWorld();
-            runOverWorld(myFont);  // Switch to OverWorld scene
+            if (runOverWorld(myFont) == -1) break;  // Switch to OverWorld scene
             battleScene = true;
         }
         else {
             newGame();
-            runBattleScene(tex_Untitled, myFont);  // Switch to BattleScene
+            if (runBattleScene(tex_Untitled, myFont) == -1) break; // Switch to BattleScene
             battleScene = false;
         }
     }
+
+    GRRLIB_FreeTexture(tex_Untitled);
+    GRRLIB_FreeTTF(myFont);
     GRRLIB_Exit();
     WPAD_Shutdown();
    //free resources
-    GRRLIB_FreeTexture(tex_Untitled);
-    GRRLIB_FreeTTF(myFont);
+    
     return 0;
 }

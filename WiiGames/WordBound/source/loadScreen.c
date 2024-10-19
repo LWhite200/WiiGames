@@ -32,7 +32,7 @@ void runLoadScreen(GRRLIB_ttfFont* myFont) {
         // GRRLIB_DrawImg(0, 0, bg, 0, 1, 1, 0xFFFFFFFF);
 
         GRRLIB_PrintfTTF(50, 100, myFont, "Epic Game Title", 64, 0xFFD700FF); // Larger, gold title
-        GRRLIB_PrintfTTF(170, 200, myFont, "Version 1.0", 24, 0xFFD700FF);
+        GRRLIB_PrintfTTF(170, 200, myFont, "Version 0.1", 24, 0xFFD700FF);
         GRRLIB_PrintfTTF(170, 230, myFont, "Created By Lukas", 18, 0xFFDD00FF); // Bright green
         
         // Make "Press A" text pulse

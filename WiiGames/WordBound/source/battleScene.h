@@ -2,6 +2,6 @@
 #define BATTLESCENE_H
 
 void newGame();
-void runBattleScene();
+int runBattleScene();
 
 #endif
