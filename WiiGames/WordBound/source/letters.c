@@ -1,7 +1,10 @@
 #include "letters.h"
+#include <stdlib.h>  // for rand()
+#include <time.h>    // for seeding rand()
 
 // Define the userLetters array here (only once)
 Letter userLetters[5];  // Global array to store the player's gathered letters
+int playerLevel = 1;
 
 // Function to initialize a letter with stats based on its name and level
 Letter InitializeLetter(char letterName, int level) {
@@ -191,12 +194,39 @@ Letter InitializeLetter(char letterName, int level) {
 void createParty() {
     // Initialize the first letter as 'A' with level 1
     userLetters[0] = InitializeLetter('A', 1);
-    userLetters[1] = InitializeLetter('E', 1);
-    userLetters[2] = InitializeLetter('I', 1);
-    userLetters[3] = InitializeLetter('0', 1);
     
     // Initialize the rest of the array with empty letters (name as '\0')
    // for (int i = 1; i < 5; i++) {
      //   userLetters[i].name = '\0';  // Empty slot
     //}
+}
+
+void addLetter() {
+    // Generate a random letter between 'A' and 'Z'
+    char newLetter = 'A' + rand() % 26;  // Random letter between 'A' and 'Z'
+
+    // Initialize the new letter (assuming level 1 for now)
+    Letter newLetterObject = InitializeLetter(newLetter, 1);
+
+    // Check if there are fewer than 5 letters
+    int numLetters = 0;
+    for (int i = 0; i < 5; i++) {
+        if (userLetters[i].name != '\0') {
+            numLetters++;
+        }
+    }
+
+    if (numLetters < 5) {
+        // Add the new letter to the first empty slot
+        for (int i = 0; i < 5; i++) {
+            if (userLetters[i].name == '\0') {
+                userLetters[i] = newLetterObject;
+                break;
+            }
+        }
+    } else {
+        // Swap a random letter with the new letter
+        int randomIndex = rand() % 5;  // Get a random index between 0 and 4
+        userLetters[randomIndex] = newLetterObject;
+    }
 }

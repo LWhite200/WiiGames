@@ -28,10 +28,12 @@ extern Letter playerLetters[5];  // Declare other arrays as externs
 extern Letter enemyLetters[5];
 extern Letter playWord[5];
 extern Letter enemyWord[5];
+extern int    playerLevel;
 
 // Function prototypes
 Letter InitializeLetter(char letterName, int level);
 void createParty();
+void addLetter();
 
 #endif // LETTERS_H
 

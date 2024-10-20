@@ -230,7 +230,7 @@ void genRandEnemyTeam() {
     char letters[] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J' };
     int numLetters = sizeof(letters) / sizeof(letters[0]);
 
-    int amount = rand() % 5 + 1;  // Random level between 1 and 5
+    int amount = rand() % playerLevel + 1;  // 5
 
     for (int i = 0; i < amount; i++) {
         int randomIndex = rand() % numLetters;
@@ -665,7 +665,11 @@ int runBattleScene(GRRLIB_texImg* tex_Untitled, GRRLIB_ttfFont* myFont) {
             int eHP = calculateTotalHP(enemyLetters, 5);
 
             if (pHP <= 0 && eHP >= 0) GRRLIB_PrintfTTF(200, 240, myFont, "LOSER!", 32, 0xFF0000FF);
-            else if (pHP >= 0 && eHP <= 0) GRRLIB_PrintfTTF(200, 240, myFont, "VICTORY!", 32, 0xFF0000FF);
+            else if (pHP >= 0 && eHP <= 0) {
+                GRRLIB_PrintfTTF(200, 240, myFont, "VICTORY!", 32, 0xFF0000FF);
+                if(playerLevel < 5) playerLevel++;
+            }
+            
             else GRRLIB_PrintfTTF(200, 240, myFont, "WHAMP WHAMP A DRAW!", 32, 0xFF0000FF);
 
             
