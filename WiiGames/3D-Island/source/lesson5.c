@@ -12,8 +12,8 @@
 #define WAVE_FREQUENCY       0.3f  // Frequency of waves
 #define WAVE_AMPLITUDE       0.5f  // Amplitude of the waves
 
-#define ISLAND_RADIUS        3.0f  // Radius of the island
-#define ISLAND_HEIGHT        0.2f  // Reduced height to flatten the island
+#define ISLAND_RADIUS        5.0f  // Radius of the island
+#define ISLAND_HEIGHT        1.0f  // Reduced height to flatten the island
 
 static void *frameBuffer[2] = { NULL, NULL };
 GXRModeObj *rmode;
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     Mtx model, modelview;
 
     u32 fb = 0;    // initial framebuffer index
-    GXColor background = { 0, 0, 0, 0xff };  // Black background
+    GXColor background = { 0, 0, 200, 0xff };  // Black background
 
     // Initialize the VI and WPAD.
     VIDEO_Init();
@@ -133,10 +133,11 @@ int main(int argc, char **argv) {
     GX_SetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
 
     // Camera setup
-    guVector cam = { 0.0F, 1.5F, 5.0F },  // Camera position
+    guVector cam = { 0.0F, 0.5F, 5.0F },  // Camera position (lowered)
              up = { 0.0F, 1.0F, 0.0F },
              look = { 0.0F, 0.0F, 0.0F };  // Look at point
     float camYaw = 0.0f;  // Camera rotation around the y-axis
+    float camPitch = 0.0f;  // Camera pitch (looking up/down)
 
     // Setup the initial view matrix
     guLookAt(view, &cam, &up, &look);
@@ -168,25 +169,99 @@ int main(int argc, char **argv) {
         }
 
         // Camera movement using Wii remote buttons
+        // Camera movement using Wii remote buttons
+        // Camera movement using Wii remote buttons
+        // Camera movement using Wii remote buttons
+        // Inside your main loop, replace the movement section with the following:
+
+        // Inside your main loop, replace the movement section with this:
         if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_UP) { // Move forward
-            cam.x -= sinf(camYaw) * walkSpeed;
-            cam.z += cosf(camYaw) * walkSpeed;
-        }
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN) { // Move backward
-            cam.x += sinf(camYaw) * walkSpeed;
-            cam.z -= cosf(camYaw) * walkSpeed;
-        }
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT) { // Rotate left
-            camYaw -= 0.05f;  // Turn left
-        }
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT) { // Rotate right
-            camYaw += 0.05f;  // Turn right
+            // Calculate the forward direction based on yaw and pitch
+            float forwardX = sinf(camYaw) * cosf(camPitch); // X component based on yaw and pitch
+            float forwardZ = cosf(camYaw) * cosf(camPitch); // Z component based on yaw and pitch
+
+            // Normalize the forward direction to prevent scaling issues
+            float length = sqrtf(forwardX * forwardX + forwardZ * forwardZ);
+            forwardX /= length;
+            forwardZ /= length;
+
+            // Move the camera forward in the direction of the camera's facing direction
+            cam.x -= forwardX * walkSpeed;
+            cam.z += forwardZ * walkSpeed;  // Z is inverted to match expected 3D behavior
         }
 
-        // Update the camera's view matrix
-        look.x = cam.x + sinf(camYaw);  // Set the "look at" position based on the yaw
-        look.z = cam.z + cosf(camYaw);
-        guLookAt(view, &cam, &up, &look); // Recalculate the view matrix
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN) { // Move backward
+            // Inverse of forward direction for backward movement
+            float forwardX = sinf(camYaw) * cosf(camPitch);
+            float forwardZ = cosf(camYaw) * cosf(camPitch);
+
+            // Normalize the backward direction
+            float length = sqrtf(forwardX * forwardX + forwardZ * forwardZ);
+            forwardX /= length;
+            forwardZ /= length;
+
+            // Move the camera backward (opposite of forward)
+            cam.x += forwardX * walkSpeed;
+            cam.z -= forwardZ * walkSpeed;
+        }
+
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT) { // Strafe left
+            // Strafe left: Calculate perpendicular direction to the forward direction
+            float strafeX = cosf(camYaw);
+            float strafeZ = sinf(camYaw);
+
+            // Normalize strafe direction
+            float length = sqrtf(strafeX * strafeX + strafeZ * strafeZ);
+            strafeX /= length;
+            strafeZ /= length;
+
+            // Move the camera to the left
+            cam.x += strafeX * walkSpeed;
+            cam.z -= strafeZ * walkSpeed;
+        }
+
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT) { // Strafe right
+            // Strafe right: Inverse of strafe left
+            float strafeX = cosf(camYaw);
+            float strafeZ = sinf(camYaw);
+
+            // Normalize strafe direction
+            float length = sqrtf(strafeX * strafeX + strafeZ * strafeZ);
+            strafeX /= length;
+            strafeZ /= length;
+
+            // Move the camera to the right
+            cam.x -= strafeX * walkSpeed;
+            cam.z += strafeZ * walkSpeed;
+        }
+
+
+         if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_1) { // Rotate left (yaw)
+            camYaw += 0.05f;  // Turn left
+        }
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_2) { // Rotate right (yaw)
+            camYaw -= 0.05f;  // Turn right
+        }
+
+
+        // Look up and down (pitch)
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_PLUS) {  // Look up (pitch)
+            camPitch += 0.05f;
+        }
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_MINUS) {  // Look down (pitch)
+            camPitch -= 0.05f;
+        }
+
+        // Update the camera's look vector based on yaw and pitch
+        look.x = cam.x + sinf(camYaw) * cosf(camPitch);
+        look.y = cam.y + sinf(camPitch);  // Update vertical look based on pitch (up/down)
+        look.z = cam.z + cosf(camYaw) * cosf(camPitch);
+
+        // Recalculate the view matrix with the updated look direction
+        guLookAt(view, &cam, &up, &look); // Recalculate the view matrix based on camera position and look-at point
+
+
+
 
         // Increment time for wave movement
         time += WAVE_SPEED;
