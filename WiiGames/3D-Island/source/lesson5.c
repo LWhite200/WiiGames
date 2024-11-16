@@ -7,22 +7,24 @@
 #include <wiiuse/wpad.h>
 
 #define DEFAULT_FIFO_SIZE    (256*1024)
-#define WATER_SIZE           100  // Size of the water grid (10x10 vertices)
+#define WATER_SIZE           100  // Size of the water grid (100x100 vertices)
 #define WAVE_SPEED           0.2f  // Speed of wave movement
 #define WAVE_FREQUENCY       0.3f  // Frequency of waves
 #define WAVE_AMPLITUDE       0.5f  // Amplitude of the waves
 
 #define ISLAND_RADIUS        5.0f  // Radius of the island
-#define ISLAND_HEIGHT        1.0f  // Reduced height to flatten the island
+#define ISLAND_HEIGHT        1.0f  // Height for the island (to give it a rounded appearance)
 
 static void *frameBuffer[2] = { NULL, NULL };
 GXRModeObj *rmode;
 
-// Function to draw a flat island (approximated with a few triangles)
+// Function to draw the island (3D sphere)
+// Function to draw the island as a 3D sphere
 void drawIsland(float x, float y, float z) {
-    const int numSegments = 16; // Number of segments to approximate the island
-
-    // Draw the island as a flat disc with reduced height
+    const int numSegments = 32;  // Increase this for more detail
+    const float islandRadius = ISLAND_RADIUS;
+    
+    // Draw the island as a sphere using spherical coordinates
     for (int i = 0; i < numSegments; ++i) {
         float theta1 = (i * 2 * M_PI) / numSegments;
         float theta2 = ((i + 1) * 2 * M_PI) / numSegments;
@@ -31,22 +33,22 @@ void drawIsland(float x, float y, float z) {
             float phi1 = (j * M_PI) / numSegments - M_PI / 2;
             float phi2 = ((j + 1) * M_PI) / numSegments - M_PI / 2;
 
-            // Calculate vertices for the flattened island
-            float x1 = x + ISLAND_RADIUS * cosf(phi1) * cosf(theta1);
-            float y1 = y + ISLAND_HEIGHT;  // Reduced height for flatness
-            float z1 = z + ISLAND_RADIUS * cosf(phi1) * sinf(theta1);
+            // Calculate the vertices for the sphere
+            float x1 = x + islandRadius * cosf(phi1) * cosf(theta1);
+            float y1 = y + islandRadius * sinf(phi1);
+            float z1 = z + islandRadius * cosf(phi1) * sinf(theta1);
 
-            float x2 = x + ISLAND_RADIUS * cosf(phi1) * cosf(theta2);
-            float y2 = y + ISLAND_HEIGHT;
-            float z2 = z + ISLAND_RADIUS * cosf(phi1) * sinf(theta2);
+            float x2 = x + islandRadius * cosf(phi1) * cosf(theta2);
+            float y2 = y + islandRadius * sinf(phi1);
+            float z2 = z + islandRadius * cosf(phi1) * sinf(theta2);
 
-            float x3 = x + ISLAND_RADIUS * cosf(phi2) * cosf(theta2);
-            float y3 = y + ISLAND_HEIGHT;
-            float z3 = z + ISLAND_RADIUS * cosf(phi2) * sinf(theta2);
+            float x3 = x + islandRadius * cosf(phi2) * cosf(theta2);
+            float y3 = y + islandRadius * sinf(phi2);
+            float z3 = z + islandRadius * cosf(phi2) * sinf(theta2);
 
-            float x4 = x + ISLAND_RADIUS * cosf(phi2) * cosf(theta1);
-            float y4 = y + ISLAND_HEIGHT;
-            float z4 = z + ISLAND_RADIUS * cosf(phi2) * sinf(theta1);
+            float x4 = x + islandRadius * cosf(phi2) * cosf(theta1);
+            float y4 = y + islandRadius * sinf(phi2);
+            float z4 = z + islandRadius * cosf(phi2) * sinf(theta1);
 
             // Draw the four vertices of the current quad face
             GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
@@ -54,10 +56,10 @@ void drawIsland(float x, float y, float z) {
             GX_Color3f32(0.8f, 0.6f, 0.4f);  // Beige color for the island
 
             GX_Position3f32(x2, y2, z2);
-            GX_Color3f32(0.8f, 0.6f, 0.4f);  // Beige color for the island
+            GX_Color3f32(0.8f, 0.6f, 0.4f);
 
             GX_Position3f32(x3, y3, z3);
-            GX_Color3f32(0.8f, 0.6f, 0.4f);  // Beige color for the island
+            GX_Color3f32(0.8f, 0.6f, 0.4f);
 
             GX_Position3f32(x4, y4, z4);
             GX_Color3f32(0.8f, 0.6f, 0.4f);  // Beige color for the island
@@ -66,6 +68,92 @@ void drawIsland(float x, float y, float z) {
         }
     }
 }
+
+
+// Function to draw the boat as a 3D rectangular prism
+void drawBoat(float x, float y, float z, float yaw) {
+    float boatLength = 1.5f;
+    float boatWidth = 0.5f;
+    float boatHeight = 0.3f;  // Add height to the boat for a 3D effect
+    float vertices[8][3];
+
+    // Calculate the 8 vertices of the rectangular prism (boat)
+    vertices[0][0] = -boatWidth / 2; vertices[0][1] = -boatHeight / 2; vertices[0][2] = -boatLength / 2;  // Front-bottom-left
+    vertices[1][0] = boatWidth / 2;  vertices[1][1] = -boatHeight / 2; vertices[1][2] = -boatLength / 2;  // Front-bottom-right
+    vertices[2][0] = boatWidth / 2;  vertices[2][1] = boatHeight / 2;  vertices[2][2] = -boatLength / 2;  // Front-top-right
+    vertices[3][0] = -boatWidth / 2; vertices[3][1] = boatHeight / 2;  vertices[3][2] = -boatLength / 2;  // Front-top-left
+    vertices[4][0] = -boatWidth / 2; vertices[4][1] = -boatHeight / 2; vertices[4][2] = boatLength / 2;   // Back-bottom-left
+    vertices[5][0] = boatWidth / 2;  vertices[5][1] = -boatHeight / 2; vertices[5][2] = boatLength / 2;   // Back-bottom-right
+    vertices[6][0] = boatWidth / 2;  vertices[6][1] = boatHeight / 2;  vertices[6][2] = boatLength / 2;   // Back-top-right
+    vertices[7][0] = -boatWidth / 2; vertices[7][1] = boatHeight / 2;  vertices[7][2] = boatLength / 2;   // Back-top-left
+
+    // Rotate boat around the Y-axis based on its yaw (rotate all vertices)
+    for (int i = 0; i < 8; i++) {
+        float xTemp = vertices[i][0] * cosf(yaw) - vertices[i][2] * sinf(yaw);
+        vertices[i][2] = vertices[i][0] * sinf(yaw) + vertices[i][2] * cosf(yaw);
+        vertices[i][0] = xTemp;
+    }
+
+    // Draw the 6 faces of the rectangular prism (boat) using quads
+    GX_Begin(GX_QUADS, GX_VTXFMT0, 24);  // 6 faces * 4 vertices per face = 24 vertices
+    // Front face
+    GX_Position3f32(x + vertices[0][0], y + vertices[0][1], z + vertices[0][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);  // White color
+    GX_Position3f32(x + vertices[1][0], y + vertices[1][1], z + vertices[1][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[2][0], y + vertices[2][1], z + vertices[2][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[3][0], y + vertices[3][1], z + vertices[3][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    // Back face
+    GX_Position3f32(x + vertices[4][0], y + vertices[4][1], z + vertices[4][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[5][0], y + vertices[5][1], z + vertices[5][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[6][0], y + vertices[6][1], z + vertices[6][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[7][0], y + vertices[7][1], z + vertices[7][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    // Left face
+    GX_Position3f32(x + vertices[0][0], y + vertices[0][1], z + vertices[0][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[3][0], y + vertices[3][1], z + vertices[3][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[7][0], y + vertices[7][1], z + vertices[7][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[4][0], y + vertices[4][1], z + vertices[4][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    // Right face
+    GX_Position3f32(x + vertices[1][0], y + vertices[1][1], z + vertices[1][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[2][0], y + vertices[2][1], z + vertices[2][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[6][0], y + vertices[6][1], z + vertices[6][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[5][0], y + vertices[5][1], z + vertices[5][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    // Top face
+    GX_Position3f32(x + vertices[3][0], y + vertices[3][1], z + vertices[3][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[2][0], y + vertices[2][1], z + vertices[2][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[6][0], y + vertices[6][1], z + vertices[6][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[7][0], y + vertices[7][1], z + vertices[7][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    // Bottom face
+    GX_Position3f32(x + vertices[0][0], y + vertices[0][1], z + vertices[0][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[1][0], y + vertices[1][1], z + vertices[1][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[5][0], y + vertices[5][1], z + vertices[5][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Position3f32(x + vertices[4][0], y + vertices[4][1], z + vertices[4][2]);
+    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_End();
+}
+
+
 
 //---------------------------------------------------------------------------------
 int main(int argc, char **argv) {
@@ -77,7 +165,7 @@ int main(int argc, char **argv) {
     Mtx model, modelview;
 
     u32 fb = 0;    // initial framebuffer index
-    GXColor background = { 0, 0, 200, 0xff };  // Black background
+    GXColor background = { 135, 206, 235, 255 };  // Light blue background
 
     // Initialize the VI and WPAD.
     VIDEO_Init();
@@ -132,12 +220,13 @@ int main(int argc, char **argv) {
     GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
     GX_SetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
 
-    // Camera setup
-    guVector cam = { 0.0F, 0.5F, 5.0F },  // Camera position (lowered)
+    // Boat and camera setup
+    guVector boatPos = { 0.0f, 0.0f, 0.0f },  // Boat position
+             cam = { 0.0F, 0.5F, 5.0F },  // Camera position (behind and above boat)
              up = { 0.0F, 1.0F, 0.0F },
-             look = { 0.0F, 0.0F, 0.0F };  // Look at point
-    float camYaw = 0.0f;  // Camera rotation around the y-axis
-    float camPitch = 0.0f;  // Camera pitch (looking up/down)
+             look = { 0.0F, 0.0F, 0.0F };  // Camera looks at the boat
+    float boatYaw = 0.0f; // Boat's yaw (rotation around y-axis)
+    f32 boatSpeed = 0.2f; // Speed of boat movement
 
     // Setup the initial view matrix
     guLookAt(view, &cam, &up, &look);
@@ -151,117 +240,42 @@ int main(int argc, char **argv) {
     // Time variable for animation
     f32 time = 0.0f;
 
-    // Walking speed control
-    f32 walkSpeed = 0.1f;
-    f32 fastSpeed = 0.25f;
-
-    // Create a simple "water" mesh as a grid (10x10) of vertices
+    // Main game loop
     while (1) {
         WPAD_ScanPads();
 
         if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) exit(0);
 
-        // Change speed with A button
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_A) {
-            walkSpeed = fastSpeed;  // Move faster if A is held
-        } else {
-            walkSpeed = 0.1f;  // Normal speed
+        // Boat movement using Wii remote buttons
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_UP) { // Move boat forward
+            boatPos.x -= sinf(boatYaw) * boatSpeed;
+            boatPos.z += cosf(boatYaw) * boatSpeed;
         }
 
-        // Camera movement using Wii remote buttons
-        // Camera movement using Wii remote buttons
-        // Camera movement using Wii remote buttons
-        // Camera movement using Wii remote buttons
-        // Inside your main loop, replace the movement section with the following:
-
-        // Inside your main loop, replace the movement section with this:
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_UP) { // Move forward
-            // Calculate the forward direction based on yaw and pitch
-            float forwardX = sinf(camYaw) * cosf(camPitch); // X component based on yaw and pitch
-            float forwardZ = cosf(camYaw) * cosf(camPitch); // Z component based on yaw and pitch
-
-            // Normalize the forward direction to prevent scaling issues
-            float length = sqrtf(forwardX * forwardX + forwardZ * forwardZ);
-            forwardX /= length;
-            forwardZ /= length;
-
-            // Move the camera forward in the direction of the camera's facing direction
-            cam.x -= forwardX * walkSpeed;
-            cam.z += forwardZ * walkSpeed;  // Z is inverted to match expected 3D behavior
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN) { // Move boat backward
+            boatPos.x += sinf(boatYaw) * boatSpeed;
+            boatPos.z -= cosf(boatYaw) * boatSpeed;
         }
 
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN) { // Move backward
-            // Inverse of forward direction for backward movement
-            float forwardX = sinf(camYaw) * cosf(camPitch);
-            float forwardZ = cosf(camYaw) * cosf(camPitch);
-
-            // Normalize the backward direction
-            float length = sqrtf(forwardX * forwardX + forwardZ * forwardZ);
-            forwardX /= length;
-            forwardZ /= length;
-
-            // Move the camera backward (opposite of forward)
-            cam.x += forwardX * walkSpeed;
-            cam.z -= forwardZ * walkSpeed;
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT) { // Turn boat left
+            boatYaw -= 0.05f;
         }
 
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT) { // Strafe left
-            // Strafe left: Calculate perpendicular direction to the forward direction
-            float strafeX = cosf(camYaw);
-            float strafeZ = sinf(camYaw);
-
-            // Normalize strafe direction
-            float length = sqrtf(strafeX * strafeX + strafeZ * strafeZ);
-            strafeX /= length;
-            strafeZ /= length;
-
-            // Move the camera to the left
-            cam.x += strafeX * walkSpeed;
-            cam.z -= strafeZ * walkSpeed;
+        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT) { // Turn boat right
+            boatYaw += 0.05f;
         }
 
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT) { // Strafe right
-            // Strafe right: Inverse of strafe left
-            float strafeX = cosf(camYaw);
-            float strafeZ = sinf(camYaw);
+        // Camera follows the boat
+        cam.x = boatPos.x + sinf(boatYaw) * 5.0f;  // Camera stays behind the boat
+        cam.z = boatPos.z - cosf(boatYaw) * 5.0f;
 
-            // Normalize strafe direction
-            float length = sqrtf(strafeX * strafeX + strafeZ * strafeZ);
-            strafeX /= length;
-            strafeZ /= length;
+        // Update the camera's look vector based on the boat's position and yaw
+        look.x = boatPos.x + sinf(boatYaw) * 2.0f;
+        look.y = boatPos.y;
+        look.z = boatPos.z - cosf(boatYaw) * 2.0f;
 
-            // Move the camera to the right
-            cam.x -= strafeX * walkSpeed;
-            cam.z += strafeZ * walkSpeed;
-        }
-
-
-         if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_1) { // Rotate left (yaw)
-            camYaw += 0.05f;  // Turn left
-        }
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_2) { // Rotate right (yaw)
-            camYaw -= 0.05f;  // Turn right
-        }
-
-
-        // Look up and down (pitch)
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_PLUS) {  // Look up (pitch)
-            camPitch += 0.05f;
-        }
-        if (WPAD_ButtonsHeld(0) & WPAD_BUTTON_MINUS) {  // Look down (pitch)
-            camPitch -= 0.05f;
-        }
-
-        // Update the camera's look vector based on yaw and pitch
-        look.x = cam.x + sinf(camYaw) * cosf(camPitch);
-        look.y = cam.y + sinf(camPitch);  // Update vertical look based on pitch (up/down)
-        look.z = cam.z + cosf(camYaw) * cosf(camPitch);
-
-        // Recalculate the view matrix with the updated look direction
-        guLookAt(view, &cam, &up, &look); // Recalculate the view matrix based on camera position and look-at point
-
-
-
+        // Recalculate the view matrix with the updated look-at point
+        guLookAt(view, &cam, &up, &look);
 
         // Increment time for wave movement
         time += WAVE_SPEED;
@@ -311,8 +325,13 @@ int main(int argc, char **argv) {
 
         GX_End();
 
-        // Draw the island (flattened sphere)
+        // Draw the island (spherical shape)
         drawIsland(0.0f, 0.0f, 0.0f);  // Place island at the origin
+
+        // Draw the boat in front of the player
+        float boatHeight = sinf((boatPos.x + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE +
+                          cosf((boatPos.z + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+        drawBoat(boatPos.x, boatHeight, boatPos.z, boatYaw);  // Boat position and yaw
 
         // Finalize drawing
         GX_DrawDone();
