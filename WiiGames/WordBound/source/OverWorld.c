@@ -201,10 +201,10 @@ char* randomQuote() {
         case 6: return "Do what you can, with what you have, where you are.";
         case 7: return "The best way to predict your future is to create it.";
         case 8: return "Do not go where the path may lead, go instead where there is no path and leave a trail.";
-        case 9: return "I do not like japanese.";
+        case 9: return "I do not like japanese cooking.";
         case 10: return "God Left Me Unfinished";
-        case 11: return "Murder is not unethical.";
-        case 12: return "Alcohol is fun, drink more.";
+        case 11: return "Murder is not unethical    If you love meat.";
+        case 12: return "Alcohol is fun, drink more...";
         case 13: return "It always seems impossible until it’s done.";
         case 14: return "Everything you’ve ever wanted is on the other side of fear.";
         case 15: return "Opportunities don't happen. You create them.";
