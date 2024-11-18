@@ -20,8 +20,11 @@ GXRModeObj *rmode;
 
 // Function to draw the island (3D sphere)
 // Function to draw the island as a 3D sphere
+// Add a new variable to control flattening (squishing) of the island
+#define ISLAND_FLATTENING 0.3f  // A value between 0 and 1, where 1 is normal height, and lower values flatten the island
+
 void drawIsland(float x, float y, float z) {
-    const int numSegments = 32;  // Increase this for more detail
+    const int numSegments = 16;  // 32 Increase this for more detail
     const float islandRadius = ISLAND_RADIUS;
     
     // Draw the island as a sphere using spherical coordinates
@@ -35,19 +38,19 @@ void drawIsland(float x, float y, float z) {
 
             // Calculate the vertices for the sphere
             float x1 = x + islandRadius * cosf(phi1) * cosf(theta1);
-            float y1 = y + islandRadius * sinf(phi1);
+            float y1 = y + islandRadius * sinf(phi1) * ISLAND_FLATTENING;  // Apply flattening factor here
             float z1 = z + islandRadius * cosf(phi1) * sinf(theta1);
 
             float x2 = x + islandRadius * cosf(phi1) * cosf(theta2);
-            float y2 = y + islandRadius * sinf(phi1);
+            float y2 = y + islandRadius * sinf(phi1) * ISLAND_FLATTENING;  // Apply flattening factor here
             float z2 = z + islandRadius * cosf(phi1) * sinf(theta2);
 
             float x3 = x + islandRadius * cosf(phi2) * cosf(theta2);
-            float y3 = y + islandRadius * sinf(phi2);
+            float y3 = y + islandRadius * sinf(phi2) * ISLAND_FLATTENING;  // Apply flattening factor here
             float z3 = z + islandRadius * cosf(phi2) * sinf(theta2);
 
             float x4 = x + islandRadius * cosf(phi2) * cosf(theta1);
-            float y4 = y + islandRadius * sinf(phi2);
+            float y4 = y + islandRadius * sinf(phi2) * ISLAND_FLATTENING;  // Apply flattening factor here
             float z4 = z + islandRadius * cosf(phi2) * sinf(theta1);
 
             // Draw the four vertices of the current quad face
@@ -68,6 +71,7 @@ void drawIsland(float x, float y, float z) {
         }
     }
 }
+
 
 
 // Function to draw the boat as a 3D rectangular prism
@@ -134,13 +138,13 @@ void drawBoat(float x, float y, float z, float yaw) {
     GX_Color3f32(1.0f, 1.0f, 1.0f);
     // Top face
     GX_Position3f32(x + vertices[3][0], y + vertices[3][1], z + vertices[3][2]);
-    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Color3f32(0.5f, 0.5f, 0.5f);
     GX_Position3f32(x + vertices[2][0], y + vertices[2][1], z + vertices[2][2]);
-    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Color3f32(0.5f, 0.5f, 0.5f);
     GX_Position3f32(x + vertices[6][0], y + vertices[6][1], z + vertices[6][2]);
-    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Color3f32(0.5f, 0.5f, 0.5f);
     GX_Position3f32(x + vertices[7][0], y + vertices[7][1], z + vertices[7][2]);
-    GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_Color3f32(0.5f, 0.5f, 0.5f);
     // Bottom face
     GX_Position3f32(x + vertices[0][0], y + vertices[0][1], z + vertices[0][2]);
     GX_Color3f32(1.0f, 1.0f, 1.0f);
@@ -150,6 +154,74 @@ void drawBoat(float x, float y, float z, float yaw) {
     GX_Color3f32(1.0f, 1.0f, 1.0f);
     GX_Position3f32(x + vertices[4][0], y + vertices[4][1], z + vertices[4][2]);
     GX_Color3f32(1.0f, 1.0f, 1.0f);
+    GX_End();
+}
+
+// Function to create the dynamic wave effect
+void drawWater(float time) {
+    GX_Begin(GX_QUADS, GX_VTXFMT0, (WATER_SIZE - 1) * (WATER_SIZE - 1) * 4);
+
+    for (int i = 0; i < WATER_SIZE - 1; i++) {
+        for (int j = 0; j < WATER_SIZE - 1; j++) {
+            // Calculate the four vertices of the current quad
+            f32 x0 = i - WATER_SIZE / 2;
+            f32 z0 = j - WATER_SIZE / 2;
+            f32 x1 = i + 1 - WATER_SIZE / 2;
+            f32 z1 = j - WATER_SIZE / 2;
+            f32 x2 = i + 1 - WATER_SIZE / 2;
+            f32 z2 = j + 1 - WATER_SIZE / 2;
+            f32 x3 = i - WATER_SIZE / 2;
+            f32 z3 = j + 1 - WATER_SIZE / 2;
+
+            // Calculate wave heights at each vertex using sine and cosine functions
+            f32 y0 = sinf((x0 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z0 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+            f32 y1 = sinf((x1 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z1 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+            f32 y2 = sinf((x2 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z2 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+            f32 y3 = sinf((x3 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z3 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+
+            // Create a dynamic gradient for the water color
+            // Blend between deep ocean blue and lighter turquoise based on wave height
+
+            // Create a base color that changes with height, you could use sin or other functions
+            float waveHeight = (y0 + y1 + y2 + y3) / 4.0f;
+            float r = 0.0f, g = 0.0f, b = 0.0f;
+
+            // Use a gradient where higher waves (positive values) get lighter blues/greens
+            if (waveHeight > -1.0f) {
+                // Lighter colors for higher waves
+                r = 0.05f + 0.2f * waveHeight;  // Slight greenish tint
+                g = 0.1f + 0.2f * waveHeight;  // Greenish tone
+                b = 0.8f + 0.2f * waveHeight;  // Light blue
+            } else {
+                // Darker colors for lower waves   1, 3, 7
+                r = 0.0f;  // Dark blue
+                g = 0.0f;  // Deep green
+                b = 0.7f;  // Ocean blue
+            }
+
+            // Add a time-based color shift for dynamic lighting changes (like day-night cycle)
+            float timeShift = sinf(time * 0.1f);  // Slow oscillation for time-based color changes
+            r += 0.1f * timeShift;  // Adding a bit of red based on time
+            g += 0.05f * timeShift; // Green shift
+            b += 0.1f * timeShift;  // Blue shift
+
+            // Ensure the color components stay within 0.0f to 1.0f
+            r = fminf(1.0f, fmaxf(0.0f, r));
+            g = fminf(1.0f, fmaxf(0.0f, g));
+            b = fminf(1.0f, fmaxf(0.0f, b));
+
+            // Set the color for each vertex
+            GX_Position3f32(x0, y0, z0);
+            GX_Color3f32(r, g, b);
+            GX_Position3f32(x1, y1, z1);
+            GX_Color3f32(r, g, b);
+            GX_Position3f32(x2, y2, z2);
+            GX_Color3f32(r, g, b);
+            GX_Position3f32(x3, y3, z3);
+            GX_Color3f32(r, g, b);
+        }
+    }
+
     GX_End();
 }
 
@@ -165,7 +237,9 @@ int main(int argc, char **argv) {
     Mtx model, modelview;
 
     u32 fb = 0;    // initial framebuffer index
-    GXColor background = { 135, 206, 235, 255 };  // Light blue background
+    // Set a brighter, happier sky blue background
+    GXColor background = { 135, 206, 255, 255 };  // Bright and cheerful sky blue
+
 
     // Initialize the VI and WPAD.
     VIDEO_Init();
@@ -277,8 +351,15 @@ int main(int argc, char **argv) {
         // Recalculate the view matrix with the updated look-at point
         guLookAt(view, &cam, &up, &look);
 
-        // Increment time for wave movement
-        time += WAVE_SPEED;
+
+
+        
+        int numIter = 5;
+        if (time >= numIter * (2 * M_PI / WAVE_FREQUENCY)) {
+            time -= numIter * (2 * M_PI / WAVE_FREQUENCY);
+            time -= (1/2) * (WAVE_SPEED * WAVE_FREQUENCY);
+        }
+        
 
         // Set viewport
         GX_SetViewport(0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
@@ -289,44 +370,14 @@ int main(int argc, char **argv) {
         guMtxConcat(view, model, modelview);
         GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-        // Begin drawing the water mesh
-        GX_Begin(GX_QUADS, GX_VTXFMT0, (WATER_SIZE - 1) * (WATER_SIZE - 1) * 4);
+        drawWater(time);
 
-        for (int i = 0; i < WATER_SIZE - 1; i++) {
-            for (int j = 0; j < WATER_SIZE - 1; j++) {
-                // Calculate the four vertices for each quad in the grid
-                f32 x0 = i - WATER_SIZE / 2;
-                f32 z0 = j - WATER_SIZE / 2;
-                f32 x1 = i + 1 - WATER_SIZE / 2;
-                f32 z1 = j - WATER_SIZE / 2;
-                f32 x2 = i + 1 - WATER_SIZE / 2;
-                f32 z2 = j + 1 - WATER_SIZE / 2;
-                f32 x3 = i - WATER_SIZE / 2;
-                f32 z3 = j + 1 - WATER_SIZE / 2;
-
-                // Apply a new, more complex wave pattern for height (y) for wave effect
-                f32 y0 = sinf((x0 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z0 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
-                f32 y1 = sinf((x1 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z1 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
-                f32 y2 = sinf((x2 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z2 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
-                f32 y3 = sinf((x3 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + cosf((z3 + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
-
-                // Set fixed colors for each face (quad) to a different shade of blue
-                // Assign each face a unique blue color
-                GX_Position3f32(x0, y0, z0);
-                GX_Color3f32(0.1f, 0.3f, 1.0f);  // Light blue
-                GX_Position3f32(x1, y1, z1);
-                GX_Color3f32(0.2f, 0.4f, 1.0f);  // Slightly darker blue
-                GX_Position3f32(x2, y2, z2);
-                GX_Color3f32(0.3f, 0.5f, 1.0f);  // Medium blue
-                GX_Position3f32(x3, y3, z3);
-                GX_Color3f32(0.4f, 0.6f, 1.0f);  // Darker blue
-            }
-        }
-
-        GX_End();
+        // Increment time for wave movement
+        time += WAVE_SPEED;
+        // Resets time variable so no overflow
 
         // Draw the island (spherical shape)
-        drawIsland(0.0f, 0.0f, 0.0f);  // Place island at the origin
+        drawIsland(0.0f, 0.0f, 15.0f);  // Place island at the origin
 
         // Draw the boat in front of the player
         float boatHeight = sinf((boatPos.x + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE +
