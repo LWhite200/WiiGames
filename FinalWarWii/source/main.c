@@ -10,7 +10,10 @@
 const u32 colPla[10] = { 0xFFFFFFFF, 0x000000FF, 0x008000FF, 0xFF2222FF, 0x0000FFFF, 0x00FF00FF };
 
 const float PI = 3.14159f;
-const float scale = 0.425f;
+const float scale = 0.75f;
+
+
+const int maxX = 5.5, maxY = 4;  // ------------ screen move
 
 bool winner = false, gameOver = false;
 
@@ -33,49 +36,66 @@ float getAngleToEnemy(bool Play) {
     else return atan2(player.y - enemy.y, player.x - enemy.x);       
 }
 
+// Angle to enemy is the rotation of the player
+float translateSword(Sword srd, bool isPla, bool x) {
+    Player *prsn = (isPla) ? &player : &enemy;
+    return (x) ? prsn->x + scale * cos(getAngleToEnemy(isPla) + srd.rot) : prsn->y + scale * sin(getAngleToEnemy(isPla) + srd.rot);
+}
+
+float distanceFromLine(float prsnX, float prsnY, float tipX, float tipY, float bottomX, float bottomY) {
+    float A = tipY - bottomY;
+    float B = bottomX - tipX;
+    float C = (tipX * bottomY) - (tipY * bottomX);
+
+    return fabs(A * prsnX + B * prsnY + C) / sqrt(A * A + B * B);
+}
+
+bool isPointOnLine(float prsnX, float prsnY, float tipX, float tipY, float bottomX, float bottomY) {
+    float dist = distanceFromLine(prsnX, prsnY, tipX, tipY, bottomX, bottomY);
+    if (dist > scale) {
+        return false;
+    }
+
+    if ((prsnX >= fmin(tipX, bottomX) && prsnX <= fmax(tipX, bottomX)) &&
+        (prsnY >= fmin(tipY, bottomY) && prsnY <= fmax(tipY, bottomY))) {
+        return true; 
+    }
+
+    return false; 
+}
+
 bool gotHit(bool isPlayer) {
     if (isPlayer && player.gotHit) return false;
     if (!isPlayer && enemy.gotHit) return false;
     
-    Sword *swrd = (isPlayer) ? &Esword : &Psword; 
-    Sword *s2 = (isPlayer) ? &Psword : &Esword;
+    // Did you get hit by opponent
     Player *prsn = (isPlayer) ? &player : &enemy;
-    Player *sprsn = (isPlayer) ? &enemy : &player; 
+    Sword *s1 = (isPlayer) ? &Esword : &Psword; 
+
+    // Did you do somethign dunb
+    Player *sprsn = (isPlayer) ? &enemy : &player;
 
     // ----------------------------------------
-    float swordReach = 0.25f;
-    float angleToEnemy = getAngleToEnemy(!isPlayer);
-    float rot = angleToEnemy + swrd->rot;
-    float tipX = sprsn->x + (swrd->size * 2.25f) * cos(rot);
-    float tipY = sprsn->y + (swrd->size * 2.25f) * sin(rot);
-    float midX = sprsn->x + (swrd->size) * cos(rot);
-    float midY = sprsn->y + (swrd->size) * sin(rot);
-    // ----------------------------------------
-    float rot2 = getAngleToEnemy(isPlayer) + s2->rot;
-    float tipX2 = prsn->x + (s2->size * 2.25f) * cos(rot2);
-    float tipY2 = prsn->y + (s2->size * 2.25f) * sin(rot2);
-    float midX2 = prsn->x + (s2->size) * cos(rot);
-    float midY2 = prsn->y + (s2->size) * sin(rot);
-    // ----------------------------------------
-    
+    float mid1 = (s1->size == scale*2) ? s1->size * 2.25 / 2 : 2.5;
 
-    float dist = sqrt(DIST_SQ(prsn->x, prsn->y, tipX, tipY));
-    float dist2 = sqrt(DIST_SQ(prsn->x, prsn->y, midX, midY));
-    float dist3 = sqrt(DIST_SQ(prsn->x, prsn->y, sprsn->x, sprsn->y));
-
-    float dist4 = sqrt(DIST_SQ(sprsn->x, sprsn->y, tipX2, tipY2));
-    float dist5 = sqrt(DIST_SQ(sprsn->x, sprsn->y, midX2, midY2));
+    // Did you get hit by the other's sword?
+    float rot = getAngleToEnemy(!isPlayer) + s1->rot;  // Rotation of player's sword
+    float tipX = sprsn->x + (s1->size * mid1) * cos(rot);
+    float tipY = sprsn->y + (s1->size * mid1) * sin(rot);
+    float bottomX = sprsn->x - (s1->size /2 * mid1) * cos(rot);
+    float bottomY = sprsn->y - (s1->size /2 * mid1) * sin(rot);
 
     bool gHit = false;
-    if ((dist <= swordReach || dist2 <= 1.25*swordReach) && !prsn->block && prsn->jumpH == 0 && sprsn->jumpH == 0) gHit = true;
-    if (dist3 <= scale*1.9 && prsn->block && (sprsn->isJump || sprsn->jumpH != 0)) gHit = true;
-    if ((dist4 <= swordReach || dist5 <= 1.25*swordReach) && prsn->isJab && sprsn->block) gHit = true; 
-    
+
+    if (isPointOnLine(prsn->x, prsn->y, tipX, tipY, bottomX, bottomY) && !prsn->block && prsn->jumpH <= 0.25) gHit = true;
+    if (sqrt(pow(prsn->x - sprsn->x, 2) + pow(prsn->y - sprsn->y, 2)) < s1->size*2 &&prsn->isJab && sprsn->block) gHit = true; // I am too lazy
+    if (sqrt(pow(prsn->x - sprsn->x, 2) + pow(prsn->y - sprsn->y, 2)) < scale*1.75 && prsn->block && (sprsn->isJump || sprsn->jumpH != 0)) gHit = true;
+
     if (gHit) {
         prsn->hitAngle = atan2(prsn->y - sprsn->y, prsn->x - sprsn->x);
         prsn->gotHit = true;
         prsn->invTime = 1.0f;
-        prsn->curHP -= sprsn->power;
+        prsn->curHP -= (sprsn->isSwing) ? sprsn->power : sprsn->power / 2;
         if (prsn->curHP <= 0) {
             gameOver = true;
             winner = !isPlayer;
@@ -86,26 +106,46 @@ bool gotHit(bool isPlayer) {
     return false;
 }
 
+
+
+const u32 coolCol[14] = {
+    0x000000FF,  // Black
+    0xFF0000FF,  // Red
+    0x00FF00FF,  // Green
+    0xFFFF00FF,  // Yellow
+    0x0000FFFF,  // Blue
+    0xFFA500FF,  // Orange
+    0xFFC0CBFF,  // Pink
+    0x8B4513FF,  // Brown
+    0x800080FF,  // Purple
+    0xFFFFFFFF,  // white
+};
+
+int plaColor = 1, eneColor = 2, floorColor = 6;
+
 int color = 0;
 void drawPlayerWorld(Player prsn, Sword srd, bool isPla) {
 
-    color = (isPla) ? 3 : 5;
+    color = (isPla) ? plaColor : eneColor;
+
+
     
     gotHit(isPla);
-    if (prsn.gotHit) color = 1;
+    if (prsn.gotHit) color = 0;
 
     // Draw the person
     GRRLIB_ObjectViewBegin();
     GRRLIB_ObjectViewRotate(0, 0, getAngleToEnemy(isPla) * 180.0f / PI);
     GRRLIB_ObjectViewTrans(prsn.x, prsn.y, prsn.jumpH);
     GRRLIB_ObjectViewEnd();
-    GRRLIB_DrawCube(scale, 1, colPla[color]);
-    GRRLIB_DrawCube(scale + 0.01, 0, colPla[0]);
+    GRRLIB_DrawCube(scale, 1, coolCol[color]);
+    GRRLIB_DrawCube(scale + 0.01, 0, coolCol[0]);
 
     // Draw the person's sword
-    float angle = getAngleToEnemy(isPla) + srd.rot + PI;  
-    srd.x = prsn.x + scale * cos(getAngleToEnemy(isPla) + srd.rot);
-    srd.y = prsn.y + scale * sin(getAngleToEnemy(isPla) + srd.rot);
+    srd.x = translateSword(srd, isPla, true);
+    srd.y = translateSword(srd, isPla, false);
+    float angle = getAngleToEnemy(isPla) + srd.rot + PI;
+
     GRRLIB_ObjectViewBegin();
     GRRLIB_ObjectViewScale(srd.size * 2.25, scale / 3, scale / 3);  
     GRRLIB_ObjectViewRotate(0, 0, angle * 180.0f / PI);  // Rotate sword based on calculated angle
@@ -118,7 +158,8 @@ void drawPlayerWorld(Player prsn, Sword srd, bool isPla) {
     }
     GRRLIB_ObjectViewTrans(srd.x, srd.y , prsn.jumpH); 
     GRRLIB_ObjectViewEnd();
-    GRRLIB_DrawCube(1.0f, 0.2f, colPla[1]);
+    GRRLIB_DrawCube(1.0f, 0.2f, coolCol[0]);
+    GRRLIB_DrawCube(1.01f, 0, coolCol[9]);
 }
 
 void rotateSword(bool positive, bool play) {
@@ -137,8 +178,11 @@ void rotateSword(bool positive, bool play) {
 const float gravity = 0.05f;
 const float jumpVelocity = 0.75f;
 
-void updatePlayer(bool left, bool right, bool up, bool down) {
-    float mS = player.moveSpeed;
+void updatePlayer(bool frst, bool left, bool right, bool up, bool down) {
+
+    Player prsn = (frst) ? player : enemy;
+
+    float mS = prsn.moveSpeed;
     float dx = 0.0f;
     float dy = 0.0f;
     float kbX = 0.0;
@@ -152,37 +196,40 @@ void updatePlayer(bool left, bool right, bool up, bool down) {
         dx /= length;
         dy /= length;
     }
-    if (player.gotHit) {
-        player.invTime -= 0.08f;  // Decrease timer over time
-        float kbX = cos(player.hitAngle);
-        float kbY = sin(player.hitAngle);
-        if (player.invTime <= 0) {
-            player.gotHit = false;  // End invincibility after timer expires
-            player.invTime = 0;
+    if (prsn.gotHit) {
+        prsn.invTime -= 0.08f;  // Decrease timer over time
+        float kbX = cos(prsn.hitAngle);
+        float kbY = sin(prsn.hitAngle);
+        if (prsn.invTime <= 0) {
+            prsn.gotHit = false;  // End invincibility after timer expires
+            prsn.invTime = 0;
         }
-        player.x += kbX / 5;
-        player.y += kbY / 5;
+        prsn.x += kbX / 5;
+        prsn.y += kbY / 5;
         Psword.x += kbX / 5;
         Psword.y += kbY / 5;
     }
-    player.x += dx * mS + kbX;
-    player.y += dy * mS + kbY;
+    prsn.x += dx * mS + kbX;
+    prsn.y += dy * mS + kbY;
     Psword.x += dx * mS + kbX;
     Psword.y += dy * mS + kbY;
-    if (player.isJump) {
-        player.velY = jumpVelocity;
-        player.isJump = false;
+    if (prsn.isJump) {
+        prsn.velY = jumpVelocity;
+        prsn.isJump = false;
     }
-    player.velY -= gravity;
-    player.jumpH += player.velY;
-    if (player.jumpH <= 0.0f) {
-        player.jumpH = 0.0f;
-        player.velY = 0.0f; 
+    prsn.velY -= gravity;
+    prsn.jumpH += prsn.velY;
+    if (prsn.jumpH <= 0.0f) {
+        prsn.jumpH = 0.0f;
+        prsn.velY = 0.0f; 
     }
-    if (player.x < -5.5f) player.x = -5.5f;
-    if (player.x > 5.5f) player.x = 5.5f;
-    if (player.y < -4.0f) player.y = -4.0f;
-    if (player.y > 4.0f) player.y = 4.0f;
+    if (prsn.x < -maxX) prsn.x = -maxX;
+    if (prsn.x > maxX) prsn.x = maxX;
+    if (prsn.y < -maxY) prsn.y = -maxY;
+    if (prsn.y > maxY) prsn.y = maxY;
+
+    if (frst) player = prsn;
+    else enemy = prsn;
 }
 
 
@@ -211,7 +258,7 @@ void updateEnemy() {
     float distance = sqrt(dx * dx + dy * dy);
 
     // Define a stopping distance (for example, 1.0f)
-    const float stopDistance = 0.8f;
+    const float stopDistance = Esword.size * 2;
 
     // If the distance to the player is greater than stopDistance, move towards the player
     if (distance > stopDistance) {
@@ -358,30 +405,107 @@ void updateEnemy() {
     }
 
 
-    if (enemy.x < -5.5f) enemy.x = -5.5f;
-    if (enemy.x > 5.5f) enemy.x = 5.5f;
-    if (enemy.y < -4.0f) enemy.y = -4.0f;
-    if (enemy.y > 4.0f) enemy.y = 4.0f;
+    if (enemy.x < -maxX) enemy.x = -maxX;
+    if (enemy.x > maxX) enemy.x = maxX;
+    if (enemy.y < -maxY) enemy.y = -maxY;
+    if (enemy.y > maxY) enemy.y = maxY;
 }
 
 void drawGameOverScreen(GRRLIB_ttfFont* myFont) {
-    GRRLIB_2dMode();
+    if (myFont == NULL) {
+        return; // Skip rendering if font is not loaded properly
+    }
 
+    GRRLIB_Rectangle(0, 0, 640, 480, 0x000000FF, 1);
     // Display "Game Over"
-    GRRLIB_PrintfTTF(150, 100, myFont, "Game Over", 64, 0xFFD700FF); // Larger, gold title
+    GRRLIB_PrintfTTF(150, 100, myFont, "Game Over", 64, 0xFFD700FF);
 
     // Display who won
     if (winner) {
-        GRRLIB_PrintfTTF(150, 200, myFont, "Player Wins!", 64, 0xFFD700FF); // Larger, gold title
+        GRRLIB_PrintfTTF(150, 200, myFont, "Player Wins!", 64, 0xFFD700FF); 
     } else {
-        GRRLIB_PrintfTTF(150, 200, myFont, "Enemy Wins!", 64, 0xFFD700FF); // Larger, gold title
+        GRRLIB_PrintfTTF(150, 200, myFont, "Enemy Wins!", 64, 0xFFD700FF);
     }
 }
 
+
+
+
+void drawStartScreen(GRRLIB_ttfFont* myFont) {
+    if (myFont == NULL) {
+        return; // Skip rendering if font is not loaded properly
+    }
+
+    static int frame = 0; // Simple frame counter for animation progress
+
+    // Smooth background fade from black to a soft blue
+    u32 backgroundColor = (0x000000FF + ((frame < 150) ? (frame * 0x00010101) : 0x00000000)); 
+    GRRLIB_FillScreen(backgroundColor); // Smooth transition to soft blue
+
+    // Display "Start Of Game" text with sliding animation from the right
+    int textX = 640 - (frame * 3); // Slide text in from the right
+    if (textX < 150) textX = 150; // Stop at a certain position
+
+    // Increase font size over time to create a zoom effect
+    int textSize = (frame < 100) ? 32 : 48; // Increase font size after 100 frames
+
+    // Show the "Start Of Game" text with smooth sliding and zooming effect
+    GRRLIB_PrintfTTF(textX, 100, myFont, "Start Of Game", textSize, 0xFFFFFFFF);
+
+    // Display "Press A --- Single" text with sliding animation from the left
+    int textX2 = (frame * 3); // Slide from left to right
+    if (textX2 > 100) textX2 = 100; // Stop at a certain position
+    GRRLIB_PrintfTTF(textX2, 200, myFont, "Press A --- Single", textSize, 0xFFFFFFFF);
+
+    // Display "Press B --- Verses" with a slight zoom effect
+    int textSize3 = (frame < 100) ? 32 : 48; // Zoom the text slightly
+    GRRLIB_PrintfTTF(100, 300, myFont, "Press B --- Verses", textSize3, 0xFFFFFFFF);
+
+    // Increment frame counter
+    frame++;
+    if (frame > 150) {
+        frame = 150; // Cap the frame at a certain point
+    }
+}
+
+
+
+
+
+bool multi = false;
+
+int randInRange(int min, int max) {
+    return min + rand() % (max - min + 1);
+}
+
+
+
+
+
+bool startGame = true;
+
+float camY = -maxY*3, camZ = 4.0f;
+const float camSpeed = 0.001f;
+const float camRotationSpeed = 0.0005f;
+
 void reset() {
 
-    float sSpeed = 0.0375f, bSpeed = 0.028f, esSpeed = 0.02f, ebSpeed = 0.0175f; 
+    float            sSpeed = 0.0425f,                    bSpeed = 0.028f;
+    float esSpeed = (multi) ? 0.0425f : 0.02f, ebSpeed = (multi) ? 0.028f : 0.0175f; 
     int sPower = 20, bPower = 25; 
+    camY = -maxY*3;
+    camZ = 4.0f;
+
+    floorColor = randInRange(0, 9);
+
+    do {
+        plaColor = randInRange(0, 9);
+    } while (plaColor == floorColor);
+
+    do {
+        eneColor = randInRange(0, 9);
+    } while (eneColor == floorColor);
+    
 
     // small --- template
     Sword tinySword = { 0.5f, 0.0f, 3*PI/2, 3*PI/2, PI/2 + 1,    0.1f, 0.1f, scale};
@@ -413,105 +537,189 @@ void reset() {
     enemMoveTimer = 0.0f;
 }
 
+void moves(bool frst) {
+    Player *prsn = (frst) ? &player : &enemy;
+    Sword *srd  = (frst) ? &Psword : &Esword;
+    int ctrl = (frst) ? 0 : 1;
+
+    if (!prsn->isJump && ! prsn->isSwing && !prsn->returnSwing && !prsn->isJab && prsn->jumpH == 0 && !prsn->block) {
+            if (PAD_ButtonsHeld(ctrl) & PAD_BUTTON_A) {
+                if (!prsn->isSwing & !prsn->returnSwing & !prsn->isJab) {
+                    prsn->isSwing = true;
+                }
+            }
+            else if (PAD_ButtonsHeld(ctrl) & PAD_BUTTON_B) {
+                if (!prsn->isSwing & !prsn->returnSwing) {
+                    prsn->isJab = true;
+                }
+            }
+            else if (PAD_ButtonsHeld(ctrl) & PAD_BUTTON_Y) { // Check if B button is released
+                if (!prsn->isJump && prsn->jumpH == 0.0f) {
+                    prsn->isJump = true;
+                    prsn->jumpH = 0.01f;
+                }
+            }
+            else if (PAD_ButtonsHeld(ctrl) & PAD_BUTTON_X) { // Check if B button is released
+                if (!prsn->isJump && prsn->jumpH == 0.0f) {
+                    prsn->block = true;
+                }
+            }
+        }
+    else if (PAD_ButtonsUp(ctrl) & PAD_BUTTON_B) { // Check if B button is released
+        prsn->returnSwing = true;  // Set returnSwing to true when B button is released
+        prsn->isJab = false;
+        prsn->block = false;
+    }
+    else if (PAD_ButtonsUp(ctrl) & PAD_BUTTON_X) { // Check if B button is released
+        prsn->returnSwing = true;  // Set returnSwing to true when B button is released
+        prsn->isJab = false;
+        prsn->block = false;
+    }
+    if (prsn->isSwing & !prsn->returnSwing) {
+        rotateSword(true, frst);
+        if (srd->rot >= srd->endRot && srd->rot < srd->startRot) {
+            srd->rot = srd->endRot;
+            prsn->returnSwing = true;
+        }
+            
+    }
+    else if (prsn->returnSwing) {
+        srd->rotSpeed = srd->normSpeed / 2;
+        rotateSword(false, frst);
+        if (srd->rot >= srd->endRot && srd->rot < srd->startRot) {
+            srd->rotSpeed = srd->normSpeed;
+            prsn->returnSwing = false;
+            prsn->isSwing = false; 
+            srd->rot = srd->startRot; }
+
+    }
+    if (prsn->isJab) {
+        rotateSword(true, frst);
+        if (srd->rot < srd->startRot)
+            srd->rot = 0; 
+    }
+    if (prsn->block) {
+        srd->rot = srd->startRot;
+    }
+}
+
 
 
 int main() {
     GRRLIB_Init();
     PAD_Init();
     GRRLIB_Settings.antialias = true;
-    GRRLIB_SetBackgroundColour(0x44, 0x00, 0xFF, 0xFF);
-    GRRLIB_Camera3dSettings(0.0f, 1.0f, 10.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+    GRRLIB_SetBackgroundColour(0x44, 0x44, 0xFF, 0xFF);
+    
     GRRLIB_ttfFont* myFont = GRRLIB_LoadTTF(FreeMonoBold_ttf, FreeMonoBold_ttf_size);
     srand(time(NULL));
     reset(); // To get random players
     
     while (1) {
         PAD_ScanPads();
+        if (PAD_ButtonsDown(0) & PAD_BUTTON_START) {
+            if (startGame) {
+                break;
+            }
+            else {
+                startGame = true;
+            }
+        } 
+
+        const float threshold = 2.0f;
+
+        // camera controls
+        float cStickX = PAD_SubStickX(0); // C-stick X-axis (Player 1)
+        float cStickY = PAD_SubStickY(0); // C-stick Y-axis (Player 1)
+        if (fabs(cStickX) > threshold / 5) {
+            camZ += cStickX * camSpeed;  // Adjust camZ left/right
+        }
+        if (fabs(cStickY) > threshold / 5) {
+            camY += cStickY * camSpeed;  // Adjust camY up/down
+        }
+
+
         bool left = false, right = false, up = false, down = false;
-        if (PAD_ButtonsDown(0) & PAD_BUTTON_START) break;
-        if (PAD_ButtonsHeld(0) & PAD_BUTTON_UP) up = true;
-        if (PAD_ButtonsHeld(0) & PAD_BUTTON_DOWN) down = true;
-        if (PAD_ButtonsHeld(0) & PAD_BUTTON_LEFT) left = true;
-        if (PAD_ButtonsHeld(0) & PAD_BUTTON_RIGHT) right = true;
-
-        if (!gameOver) {
-            updatePlayer(left, right, up, down);
-            updateEnemy();
-        }
+        bool left2 = false, right2 = false, up2 = false, down2 = false;
         
-        if (!player.isJump && ! player.isSwing && !player.returnSwing && !player.isJab && player.jumpH == 0 && !player.block) {
-            if (PAD_ButtonsHeld(0) & PAD_BUTTON_A) {
-                if (!player.isSwing & !player.returnSwing & !player.isJab) {
-                    player.isSwing = true;
-                }
-            }
-            else if (PAD_ButtonsHeld(0) & PAD_BUTTON_B) {
-                if (!player.isSwing & !player.returnSwing) {
-                    player.isJab = true;
-                }
-            }
-            else if (PAD_ButtonsHeld(0) & PAD_BUTTON_Y) { // Check if B button is released
-                if (!player.isJump && player.jumpH == 0.0f) {
-                    player.isJump = true;
-                    player.jumpH = 0.01f;
-                }
-            }
-            else if (PAD_ButtonsHeld(0) & PAD_BUTTON_X) { // Check if B button is released
-                if (!player.isJump && player.jumpH == 0.0f) {
-                    player.block = true;
-                }
-            }
-        }
-        else if (PAD_ButtonsUp(0) & PAD_BUTTON_B) { // Check if B button is released
-            player.returnSwing = true;  // Set returnSwing to true when B button is released
-            player.isJab = false;
-            player.block = false;
-        }
-        else if (PAD_ButtonsUp(0) & PAD_BUTTON_X) { // Check if B button is released
-            player.returnSwing = true;  // Set returnSwing to true when B button is released
-            player.isJab = false;
-            player.block = false;
-        }
-        if (player.isSwing & !player.returnSwing) {
-            rotateSword(true, true);
-            if (Psword.rot >= Psword.endRot && Psword.rot < Psword.startRot) {
-                Psword.rot = Psword.endRot;
-                player.returnSwing = true;
-            }
-                
-        }
-        else if (player.returnSwing) {
-            Psword.rotSpeed = Psword.normSpeed / 2;
-            rotateSword(false, true);
-            if (Psword.rot >= Psword.endRot && Psword.rot < Psword.startRot) {
-                Psword.rotSpeed = Psword.normSpeed;
-                player.returnSwing = false;
-                player.isSwing = false; 
-                Psword.rot = Psword.startRot; }
+        float joystickX = PAD_StickX(0); 
+        float joystickY = PAD_StickY(0);
 
-        }
-        if (player.isJab) {
-            rotateSword(true, true);
-            if (Psword.rot < Psword.startRot)
-                Psword.rot = 0; 
-        }
-        if (player.block) {
-            Psword.rot = Psword.startRot;
+        
+        if (joystickX < -threshold) left = true;   // Left
+        if (joystickX > threshold) right = true;   // Right
+        if (joystickY < -threshold) down = true;   // Down
+        if (joystickY > threshold) up = true;      // Up
+
+        if (multi) {
+            
+            float joystickX2 = PAD_StickX(1); 
+            float joystickY2 = PAD_StickY(1);
+
+            if (joystickX2 < -threshold) left2 = true;   // Left
+            if (joystickX2 > threshold) right2 = true;   // Right
+            if (joystickY2 < -threshold) down2 = true;   // Down
+            if (joystickY2 > threshold) up2 = true;      // Up
         }
 
+        // game over display
+        if (gameOver && !startGame) {
+            GRRLIB_2dMode();
+            drawGameOverScreen(myFont);
+        }
 
+        if (!gameOver && !startGame) {
+            if (!multi) {
+                updatePlayer(true, left, right, up, down);
+                updateEnemy();
+            }
+            else {
+                updatePlayer(true, left, right, up, down);
+                updatePlayer(false, left2, right2, up2, down2);
+            }
+            
+        }
 
-        if (!gameOver) {
+        moves(true);
+        if (multi) moves(false);
+        
+        if (!gameOver && !startGame) {
+            GRRLIB_Camera3dSettings(0.0f, camY, camZ, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
             GRRLIB_3dMode(0.1, 1000, 45, 0, 1);
+            
+
+            // draw a flat cube as the floor
+            GRRLIB_ObjectViewBegin();
+            GRRLIB_ObjectViewRotate(0, 0, 0);
+            GRRLIB_ObjectViewTrans(0, 0, -scale);
+            GRRLIB_ObjectViewScale(maxX*3, maxY*3, 1);
+            GRRLIB_ObjectViewEnd();
+            GRRLIB_DrawCube(scale, 1, coolCol[floorColor]);
+            GRRLIB_DrawCube(scale + 0.01, 0, coolCol[0]);
+
             drawPlayerWorld(player, Psword, true);
             drawPlayerWorld(enemy, Esword, false);
         }
-        else {
-            drawGameOverScreen(myFont);
-            // Wait for the user to press Start to exit
+
+        // reset at end so nothign else can cause problems
+        if (gameOver && !startGame) {
             if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
                 reset();
             }
+        }
+
+        if (startGame) {
+            GRRLIB_2dMode();
+            if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
+                reset();
+                startGame = false;
+            }
+            if (PAD_ButtonsDown(0) & PAD_BUTTON_B) {
+                reset();
+                startGame = false;
+                multi = true;
+            }
+            drawStartScreen(myFont);
         }
         
         GRRLIB_Render();
